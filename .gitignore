@@ -1,0 +1,16 @@
+# Nothing here is needed to install the plugin; keep the repository small and
+# source-only so a `github:` install stays fast.
+node_modules/
+*.tgz
+*.log
+
+# Local backups / scratch
+backup/
+*.bak
+.DS_Store
+Thumbs.db
+
+# Extracted Electron payloads and probe outputs used while patching
+asar-*/
+probe*.mjs
+served-client.js
