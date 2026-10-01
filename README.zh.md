@@ -22,7 +22,7 @@
 这是 **dsh-retrace 0.4.32 的非官方、源码可见构建**，可在 **DSH 0.2.x（含 DSH Desktop 0.2.0-rc.2）** 上运行——该线的会话格式是 **v4**。上游 0.4.32 面向 0.1.x：0.2.x 的兼容性闸门直接拒装；即使强行装进去，它依赖的日志契约也会在 v4 会话上**拒绝每一次**编辑 / 撤回 / 重新生成 / 恢复（`marker-rejected`，零写入）。本构建修掉了这个问题。与 DeepSeek 官方无关，也不是上游项目本身。
 
 ```sh
-dsh plugin --profile desktop add "github:<owner>/dsh-retrace-desktop#main"
+dsh plugin --profile desktop add "github:BookMaker123/dsh-retrace-desktop#main"
 # 然后重启 DSH Desktop
 ```
 
@@ -64,7 +64,7 @@ dsh plugin --profile desktop add "github:<owner>/dsh-retrace-desktop#main"
 
 ```sh
 # 本构建（0.1.x 与 0.2.x，含 DSH Desktop）：
-dsh plugin --profile desktop add "github:<owner>/dsh-retrace-desktop#main"
+dsh plugin --profile desktop add "github:BookMaker123/dsh-retrace-desktop#main"
 # 本地目录 / 解压后的 ZIP：
 dsh plugin --profile desktop add ~/plugins/dsh-retrace-desktop
 # 上游 npm 版本（仅 0.1.x 宿主）：

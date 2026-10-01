@@ -28,7 +28,7 @@ regenerate and restore on a v4 session (`marker-rejected`, nothing written).
 This build fixes that. Not affiliated with DeepSeek; not the upstream project.
 
 ```sh
-dsh plugin --profile desktop add "github:<owner>/dsh-retrace-desktop#main"
+dsh plugin --profile desktop add "github:BookMaker123/dsh-retrace-desktop#main"
 # then restart DSH Desktop
 ```
 
@@ -74,7 +74,7 @@ it cannot dirty the log, and new markers create **no token-meter pairing debt**
 
 ```sh
 # this build (0.1.x AND 0.2.x, incl. DSH Desktop):
-dsh plugin --profile desktop add "github:<owner>/dsh-retrace-desktop#main"
+dsh plugin --profile desktop add "github:BookMaker123/dsh-retrace-desktop#main"
 # local checkout / extracted ZIP:
 dsh plugin --profile desktop add ~/plugins/dsh-retrace-desktop
 # upstream npm release (0.1.x hosts only):
