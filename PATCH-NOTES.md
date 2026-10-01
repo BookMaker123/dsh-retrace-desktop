@@ -1,9 +1,9 @@
-# dsh-retrace — Desktop-patched build (`0.4.32-desktop.2`)
+# dsh-retrace — Desktop-patched build (`0.4.32-desktop.3`)
 
 Locally patched copy of **dsh-retrace 0.4.32** (npm) that loads and runs on
-**DSH Desktop 0.2.0-rc.2** (`@deepseek-ai/dsh 0.2.0-rc.2`, session format **v4**),
-plus a vendored, locally patched **dsh-log-contract 0.3.18** that retrace's
-pre-write guard depends on.
+**DSH 0.2.x — including DSH Desktop 0.2.0-rc.2** (`@deepseek-ai/dsh 0.2.0-rc.2`,
+session format **v4**), plus a vendored, locally patched **dsh-log-contract
+0.3.18** that retrace's pre-write guard depends on.
 
 Upstream 0.4.32 targets the 0.1.x runtime line (`^0.1.0-rc.6` peers), so DSH
 Desktop's compatibility gate rejects it:
@@ -13,10 +13,15 @@ dsh: installation rejected: Plugin dsh-retrace@0.4.32 is incompatible with dsh 0
 peerDependencies {... ^0.1.0-rc.6 ...}. … dsh: nothing was installed.
 ```
 
+Since `0.4.32-desktop.3` the patched contract travels **inside** this package
+(`vendor/dsh-log-contract`, imported through `lib/vendor-contract.js`), so the
+package is self-contained: a plain `file:`, git, or registry install needs no
+`overrides` entry in the consuming profile.
+
 Both halves are installed into the `desktop` profile by
 [`install-into-desktop.ps1`](install-into-desktop.ps1) — run it after any change
 in this directory. The plugin source lives here; the profile only ever holds a
-copy (see *Reinstalling* below).
+copy (see *Reinstalling* below). To publish, see *Packaging & distribution*.
 
 ## Changes against upstream 0.4.32
 
@@ -26,7 +31,7 @@ Every gated peer moved from `^0.1.0-rc.6` to `>=0.1.0-rc.6 <0.3.0`
 (`@deepseek-ai/dsh-session`, `dsh-token-meter`, `dsh-storage-domain`,
 `dsh-client-locale`, `dsh-client-ui-conversation`, `dsh-client-ui-slots`).
 `@deepseek-ai/cordis` and `react` are not gated and were left alone.
-`version` is `0.4.32-desktop.2` so the patched build is distinguishable.
+`version` is `0.4.32-desktop.3` so the patched build is distinguishable.
 
 The gate only inspects peers named `@deepseek-ai/dsh` or `@deepseek-ai/dsh-*`
 (`evaluatePluginCompatibility` in `@deepseek-ai/dsh-app-boot`). An
@@ -118,13 +123,22 @@ the official v4 set admits: `surfaceOp: "append"`, role `developer`, source
 `dsh-log-contract` is retrace's own dependency, but it is not a bundle and its
 peer (`@deepseek-ai/dsh-session`) is not a `dsh*` name, so the compatibility gate
 never looks at it — it silently ran with v3 semantics. It is therefore patched
-here and pinned with a pnpm override so retrace's `^0.3.12` range resolves to it:
+and carried **in this package**:
 
-```yaml
-# ~/.dsh/profiles/desktop/pnpm-workspace.yaml
-overrides:
-  dsh-log-contract: file:C:/Users/zwq/.dsh/plugins/dsh-retrace-desktop/vendor/dsh-log-contract
-```
+* `vendor/dsh-log-contract/` — the patched copy (version bumped to `0.3.18` +
+  `dshDesktopPatch` marker, so it is identifiable at runtime);
+* `lib/vendor-contract.js` — the single re-export shim every consumer imports
+  (`export * from '../vendor/dsh-log-contract/lib/index.js'`), used by
+  `lib/index.js`, `lib/archaeology-cli.js`, `lib/versioning.js`,
+  `lib/prewrite-guard.js` (lazy `import()`), `lib/watchdog.js` (lazy `import()`)
+  and `bin/retrace.mjs`. No bare `dsh-log-contract` specifier remains, and
+  `dsh-log-contract` is no longer a registry dependency.
+
+Until `0.4.32-desktop.2` this was instead pinned with a pnpm `overrides:` entry
+in the profile's `pnpm-workspace.yaml`; that approach needed extra setup in every
+consuming profile and could not survive a git/registry install, so it was
+replaced. A profile that still carries the old pin is cleaned up by
+`install-into-desktop.ps1` (it removes just that line and keeps other overrides).
 
 | # | file | change |
 |---|---|---|
@@ -182,6 +196,15 @@ exactly the one Desktop uses (`ELECTRON_RUN_AS_NODE=1` +
   guard) still fire. The same sweep over a **v3** log gives byte-identical
   results before and after the patch, so v0–v3 behaviour is unchanged.
 
+* **packaged-artifact test** — `pnpm pack` then install the tarball into a scratch
+  profile (no override, prod deps only): `node_modules/dsh-retrace` +
+  `node_modules/zod` and nothing else, the vendored contract inside the copy, the
+  isolated host boots, `GET /api/plugins/retrace/status` answers
+  `{"ok":true,"value":null}`, and the **served** client bundle contains
+  `new Set(["system/message","user/message","developer/message","assistant/message","tool/result"])`
+  plus `if (source.kind === "compact-checkpoint") return true;` — i.e. the
+  published artifact is the patched one.
+
 ## Unchanged / checked by hand
 
 Everything else retrace 0.4.32 relies on still holds in 0.2.0-rc.2:
@@ -212,19 +235,60 @@ Everything else retrace 0.4.32 relies on still holds in 0.2.0-rc.2:
   `@deepseek-ai/dsh-app-boot` routes installation-scope names ahead of the
   profile's own `node_modules`.
 
+## Packaging & distribution
+
+The package is self-contained and publish-ready.
+
+* **Contents** — `pnpm pack` produces ~70 files / ~520 KB
+  (`dsh-retrace-0.4.32-desktop.3.tgz`): `lib/**`, `bin/retrace.mjs`,
+  `vendor/dsh-log-contract/**`, `cordis.patch.yml`, both READMEs, `PATCH-NOTES.md`
+  and both licenses. `node_modules`, build scripts and the upstream `scripts/`
+  generators (absent from this copy) are not packed; `prepublishOnly` only runs
+  syntax checks that exist here.
+* **Profile requirements** — none beyond the plugin itself: peers come from the
+  host installation, and the only runtime dependency is `zod`.
+* **Install specs that work**
+  * local directory — `dsh plugin --profile <p> add <this-directory>`
+  * GitHub — `dsh plugin --profile <p> add "github:<owner>/dsh-retrace-desktop#main"`
+  * tarball — `dsh plugin --profile <p> add <file>.tgz`
+  * npm — needs a package name equal to the Cordis row name (see below)
+* **Why not npm under this name** — `dsh-retrace` on npm belongs to the upstream
+  authors. A git/tarball install keeps the package name `dsh-retrace`, which is
+  what the bundle row imports (`cordis-plugin-loader/lib/index.js:451` imports
+  `entry.name`; the row is `name: dsh-retrace`), so **no rename is needed**.
+  Publishing to npm under a different name would require renaming the cordis row,
+  `lib/index.js`/`lib/client.js` `name`, the embedded client-bundle id and the
+  route keys in the same commit.
+* **Publishing** — [`publish.ps1`](publish.ps1):
+  `.\publish.ps1 -Owner <you> [-Repo dsh-retrace-desktop] [-Token ghp_…]` runs the
+  checks, commits to `main`, creates the public GitHub repo with the
+  `dsh-plugin` topic (with `-Token`) and pushes; without `-Token` it commits and
+  prints the one push command. It then prints the listing checklist.
+* **Marketplace** — the DSH ecosystem has no first-party upload API. Community
+  hubs index **public repositories carrying the GitHub topic `dsh-plugin`**:
+  [dsh-plugin.org](https://dsh-plugin.org/submit) (submit page; requires a public
+  repo, the topic, a README with a copyable install command, an `apply(ctx)`
+  export and a license), the
+  [awesome-deepseek-harness-plugins](https://github.com/imsai-sh/awesome-deepseek-harness-plugins)
+  list, and the in-app **dsh-market** (`dsh plugin --profile desktop add dshmarket`
+  → Settings → Plugin Market), which searches the same catalog. Listing is
+  automatic once the repo is public with the topic; `unconfirmed` until reviewed.
+
 ## Reinstalling / removing
 
 * Reinstall / refresh: `install-into-desktop.ps1` (parameters `-Source`,
-  `-InstallRoot`, `-ProfileDir`). It rewrites the `file:` dependency, the bundle
-  entry and the override block, then runs the bundled pnpm **twice** — once with
-  the dependency removed, once with it restored. That two-pass dance is not
-  cosmetic: pnpm materialises a `file:` **directory** dependency by *copying* it
-  and reports `Already up to date` whenever only the directory's contents
-  changed, leaving stale files in `node_modules`. It cannot be forced with
-  `pnpm install --force` either.
+  `-InstallRoot`, `-ProfileDir`). It rewrites the `file:` dependency and the
+  bundle entry, drops a stale `dsh-log-contract` override if one is present, then
+  runs the bundled pnpm **twice** — once with the dependency removed, once with it
+  restored. That two-pass dance is not cosmetic: pnpm materialises a `file:`
+  **directory** dependency by *copying* it and reports `Already up to date`
+  whenever only the directory's contents changed, leaving stale files in
+  `node_modules`. It cannot be forced with `pnpm install --force` either. (A
+  tarball or git spec has no such problem.)
 * Remove: `uninstall-from-desktop.ps1`, then restart DSH Desktop.
-* Never install retrace through Settings → Plugins: it would fetch the unpatched
-  npm 0.4.32 (rejected as incompatible) and drop the override.
+* Never install retrace through Settings → Plugins **from npm**: it would fetch
+  the unpatched upstream 0.4.32 (rejected as incompatible, and v3-only once
+  forced in). Installing the GitHub/tarball build from there is fine.
 
 ## Caveats
 
