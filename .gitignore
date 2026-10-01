@@ -14,3 +14,8 @@ Thumbs.db
 asar-*/
 probe*.mjs
 served-client.js
+
+# Local-only Windows helpers (kept out of the public repository; used by the maintainer)
+/install-into-desktop.ps1
+/uninstall-from-desktop.ps1
+/publish.ps1

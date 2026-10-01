@@ -289,11 +289,20 @@ The package is self-contained and publish-ready.
   Publishing to npm under a different name would require renaming the cordis row,
   `lib/index.js`/`lib/client.js` `name`, the embedded client-bundle id and the
   route keys in the same commit.
-* **Publishing** — [`publish.ps1`](publish.ps1):
-  `.\publish.ps1 -Owner <you> [-Repo dsh-retrace-desktop] [-Token ghp_…]` runs the
-  checks, commits to `main`, creates the public GitHub repo with the
-  `dsh-plugin` topic (with `-Token`) and pushes; without `-Token` it commits and
-  prints the one push command. It then prints the listing checklist.
+* **Publishing** — `publish.ps1` (**maintainer-local, not tracked in this
+  repository**, see below): `.\publish.ps1 -Owner <you> [-Repo dsh-retrace-desktop]
+  [-Token ghp_…]` runs the checks, commits to `main`, creates the public GitHub
+  repo with the `dsh-plugin` topic (with `-Token`) and pushes; without `-Token` it
+  commits and prints the commands. `-Ssh` / `-Push` push token-free (SSH key, or
+  HTTPS + Git Credential Manager). It then prints the listing checklist.
+* **Why no `.ps1` in the repo** — `publish.ps1`, `install-into-desktop.ps1` and
+  `uninstall-from-desktop.ps1` are Windows helpers for the machine that maintains
+  this build: they carry a local `-InstallRoot` default, and the publish script is
+  a release-workflow tool that plugin users do not need. They are `.gitignore`d and
+  stay in the working tree only, so a `github:` install ships `lib/`, `bin/`,
+  `vendor/`, the docs and the licenses — nothing else. (They were tracked in the
+  first push; the commit "repo: keep the local Windows helpers out of the public
+  repository" removes them.)
 * **Marketplace** — the DSH ecosystem has no first-party upload API. Community
   hubs index **public repositories carrying the GitHub topic `dsh-plugin`**:
   [dsh-plugin.org](https://dsh-plugin.org/submit) (submit page; requires a public
