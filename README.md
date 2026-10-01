@@ -46,6 +46,7 @@ dsh plugin --profile desktop add "github:<owner>/dsh-retrace-desktop#main"
 2. **Session-format-v4 message vocabulary** — compaction checkpoints arrive as `{ kind: 'compact-checkpoint' }` instead of the retired `{ kind: 'plugin', plugin: 'compact' }`; both are recognized, in every copy of the predicate.
 3. **The official five-type surface set** (`system/developer/user/assistant/tool`) in all five places retrace hardcoded three, plus `developer/message` handling in the boundary digest.
 4. **A vendored, v4-correct `dsh-log-contract`** (`vendor/dsh-log-contract`, upstream 0.3.17 + these fixes) imported through `lib/vendor-contract.js`. Its v3-shaped checks were the reason every write failed on v4 — `tool/result` must be `role: 'tool'` with a direct content array, `system/message` must carry a `system-prompt` source, and `developer/message` belongs to the surface set. Because the patched contract travels **inside this package**, no `overrides` entry is needed in the consuming profile.
+5. **Recalling a reply also refills the composer.** Upstream echoes the recalled text into the input box only from the row under a *user* message; pressing ↩ on an assistant reply dropped the round and left the composer empty, contradicting the documented behaviour. This build returns the round's user input (`userText`) from the recall op and refills the composer from the assistant row as well.
 
 ---
 

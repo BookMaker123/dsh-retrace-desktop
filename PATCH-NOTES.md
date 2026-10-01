@@ -1,4 +1,4 @@
-# dsh-retrace — Desktop-patched build (`0.4.32-desktop.3`)
+# dsh-retrace — Desktop-patched build (`0.4.32-desktop.4`)
 
 Locally patched copy of **dsh-retrace 0.4.32** (npm) that loads and runs on
 **DSH 0.2.x — including DSH Desktop 0.2.0-rc.2** (`@deepseek-ai/dsh 0.2.0-rc.2`,
@@ -31,7 +31,7 @@ Every gated peer moved from `^0.1.0-rc.6` to `>=0.1.0-rc.6 <0.3.0`
 (`@deepseek-ai/dsh-session`, `dsh-token-meter`, `dsh-storage-domain`,
 `dsh-client-locale`, `dsh-client-ui-conversation`, `dsh-client-ui-slots`).
 `@deepseek-ai/cordis` and `react` are not gated and were left alone.
-`version` is `0.4.32-desktop.3` so the patched build is distinguishable.
+`version` is `0.4.32-desktop.4` so the patched build is distinguishable.
 
 The gate only inspects peers named `@deepseek-ai/dsh` or `@deepseek-ai/dsh-*`
 (`evaluatePluginCompatibility` in `@deepseek-ai/dsh-app-boot`). An
@@ -173,6 +173,36 @@ new Set(['system/message', 'user/message', 'developer/message', 'assistant/messa
 extraction (`ROLE_BY_TYPE`, `eventText`) so the boundary digest reports them
 instead of `unknown` / empty.
 
+### 6. Recalling an assistant reply now refills the composer
+
+Upstream's two recall entry points behave differently, although the README
+describes one behaviour:
+
+| entry point | component | echo into the composer |
+|---|---|---|
+| row under a **user** message (↩ "撤回这条消息") | `UserActionsRow` | yes — `inputActions.setDraft(result.value.text)` |
+| ↩ on an **assistant** reply ("撤回这条回复") | `AssistantActions` | **no** — the op result was discarded |
+
+`AssistantActions` never even took an `inputActions` prop, so pressing ↩ on a
+reply dropped the whole round and left the composer empty. Both halves are fixed:
+
+* `lib/host-core.js` — the `recall` op result carries `userText`, the first
+  **real** user input inside the shadowed span (`source.kind === 'user'`, so
+  host-injected `runtime-context` / `model-selection` / `agent-message` and
+  retrace's own `kind: 'model'` replace carrier are skipped). `recallUserText()`
+  returns `''` when the round had no user input, and the client then leaves the
+  composer alone.
+* `lib/client.js`, `lib/client.bundle.js`, `lib/dynamic-client.js` —
+  `AssistantActions` takes the ambient `inputActions` prop (declared for every
+  slot component by `ctx.uiSession.provide({ props: ['inputActions'] })` in
+  `@deepseek-ai/dsh-client-ui-conversation`) and calls `setDraft(userText)` after
+  a successful recall, exactly like the user row.
+
+Checked against the live v4 session that exposed it
+(`session-309c7063…`, marker `seq=259`, shadowed `253..255`): the rule selects
+`seq=253` — the text the user actually typed — not the assistant reply and not
+the recalled-content placeholder.
+
 ## Verified against the real 0.2.0-rc.2 runtime
 
 Two harnesses, both launched with the *bundled* runtime so the module graph is
@@ -240,7 +270,7 @@ Everything else retrace 0.4.32 relies on still holds in 0.2.0-rc.2:
 The package is self-contained and publish-ready.
 
 * **Contents** — `pnpm pack` produces ~70 files / ~520 KB
-  (`dsh-retrace-0.4.32-desktop.3.tgz`): `lib/**`, `bin/retrace.mjs`,
+  (`dsh-retrace-0.4.32-desktop.4.tgz`): `lib/**`, `bin/retrace.mjs`,
   `vendor/dsh-log-contract/**`, `cordis.patch.yml`, both READMEs, `PATCH-NOTES.md`
   and both licenses. `node_modules`, build scripts and the upstream `scripts/`
   generators (absent from this copy) are not packed; `prepublishOnly` only runs

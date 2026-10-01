@@ -40,6 +40,7 @@ dsh plugin --profile desktop add "github:<owner>/dsh-retrace-desktop#main"
 2. **v4 消息词汇**：压缩检查点以 `{ kind: 'compact-checkpoint' }` 出现（旧的 `{ kind: 'plugin', plugin: 'compact' }` 已被 v4 淘汰）；两种都认，且落在每一份判定实现里。
 3. **官方五类 surface 集合**（`system/developer/user/assistant/tool`）：retrace 原先有五处硬编码三类，现已全部补齐，并让边界摘要认识 `developer/message`。
 4. **内置修好的 `dsh-log-contract`**（`vendor/dsh-log-contract`，上游 0.3.17 + 本仓库的修复），经 `lib/vendor-contract.js` 引入。它的三条 v3 形状规则正是 v4 上「每次写入都被拒」的根因——`tool/result` 在 v4 是 `role: 'tool'` + 直接内容数组、`system/message` 必须带 `system-prompt` source、`developer/message` 属于 surface 集合。由于修好的契约随包携带，**使用方 profile 不需要任何 `overrides`**。
+5. **撤回助手的回复时也会回填输入框**。上游只有在**用户消息**下方的撤回里把原文回填到输入框；在助手回复上按 ↩ 只会丢掉整轮、输入框保持空白，与文档描述不符。本构建让撤回操作额外返回该轮的用户输入（`userText`），助手回复侧的 ↩ 也会回填，两个入口行为一致。
 
 ---
 
